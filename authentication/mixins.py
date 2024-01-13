@@ -4,7 +4,7 @@ import base64
 import pyotp
 from django.conf import settings
 
-from grito_talent_pool_server.utils import generateKey
+from grito_talent_pool_server.utils import GenerateKey
 
 User = get_user_model()
 
@@ -12,7 +12,7 @@ User = get_user_model()
 class OTPVerificationMixin:
     @staticmethod
     def generate_key(user):
-        keygen = generateKey()
+        keygen = GenerateKey()
         key_bytes = keygen.return_value(user.email).encode()
         key_base32 = base64.b32encode(key_bytes).decode('utf-8')
         return key_base32

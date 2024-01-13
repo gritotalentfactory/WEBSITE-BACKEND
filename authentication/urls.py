@@ -9,7 +9,7 @@ urlpatterns = router.urls
 urlpatterns += [
     path(
         "admin/sign-up",
-        view.CreateSuperAdminRegistrationView.as_view(),
+        view.AdminRegistrationView.as_view(),
         name="create-admin-user"
     ),
     path("login/admin/", view.AdminLoginView.as_view(), name="login-admin"),

@@ -12,75 +12,59 @@ from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from authentication.serializers import SuperAdminRegistrationSerializer, LoginSerializer, UserUpdateVerifiedSerializer, \
-    ResetPasswordSerializer, EmailandPhoneNumberSerializer, OTPVerificationSerializer, \
+from authentication.serializers import (
+    SuperAdminRegistrationSerializer,
+    LoginSerializer,
+    UserUpdateVerifiedSerializer,
+    ResetPasswordSerializer,
+    EmailandPhoneNumberSerializer,
+    OTPVerificationSerializer,
     ResendOTPSerializer
+)
 
 from grito_talent_pool_server.utils import (
     error_400,
     error_406,
     error_401,
     serializer_errors,
-    error_404, generateKey, error_response,
+    error_404,
+    GenerateKey,
+    error_response,
 )
 
 User = get_user_model()
 
 
-class CreateSuperAdminRegistrationView(APIView):
+class AdminRegistrationView(APIView):
     permission_classes = (AllowAny,)  # For now, it is open
     serializer_class = SuperAdminRegistrationSerializer
 
     def post(self, request, *args, **kwargs):
-        """
-        Create a MyModel
-        ---
-        parameters:
-            - name: file
-              description: file
-              required: True
-              type: file
-        responseMessages:
-            - code: 201
-              message: Created
-        """
-
         serializer = self.serializer_class(
             data=request.data, context={"request": request}
         )
 
         if serializer.is_valid():
-            result = serializer.save()
+            code, result = serializer.create(serializer.validated_data)
+            if code == 406:
+                return error_406(result)
             email = result["email"]
-
             user = User.objects.get(email=email)
             refresh = RefreshToken.for_user(user)
+            user_data = UserUpdateVerifiedSerializer(user).data
+            return Response(
+                {
+                    "code": 201,
+                    "status": "success",
+                    "message": "Super User created successfully, Check email for verification code",
+                    "name": user_data['name'],
+                    'email': user_data['email'],
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token)
 
-            # Send otp to user
-            try:
-                keygen = generateKey()
-                key_bytes = keygen.return_value(email).encode()
-                key_base32 = base64.b32encode(key_bytes).decode('utf-8')
-                OTP = pyotp.TOTP(key_base32, interval=settings.OTP_TIMEOUT)
-                otp_code = OTP.now()
-                # send_otp_email(email, otp_code, user.first_name)
-                return Response(
-                    {
-                        "code": 201,
-                        "status": "success",
-                        "message": "Super User created successfully, Check email for verification code",
-                        "refresh": str(refresh),
-                        "access": str(refresh.access_token)
-
-                    },
-                    status=status.HTTP_201_CREATED,
-                )
-            except User.DoesNotExist:
-                return Response(
-                    {"message": "Admin with the email does not exist"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
+                },
+                status=status.HTTP_201_CREATED,
+            )
         else:
             default_errors = serializer.errors
             error_message = serializer_errors(default_errors)
@@ -96,7 +80,6 @@ class LogoutView(APIView):
 
 class AdminLoginView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
     serializer_class = LoginSerializer
 
     def post(self, request):
@@ -108,42 +91,34 @@ class AdminLoginView(APIView):
             user = authenticate(request, email=email.lower(), password=password)
 
             if user is not None:
-                if user.is_active:
-                    if user.is_verified:
-                        if user.is_active:
-                            if user.groups.filter(name="super-admin").exists():
-                                the_serializer = UserUpdateVerifiedSerializer(user).data
+                if user.is_verified:
+                    if user.groups.filter(name="super-admin").exists():
+                        the_serializer = UserUpdateVerifiedSerializer(user).data
 
-                                refresh = RefreshToken.for_user(user)
+                        refresh = RefreshToken.for_user(user)
 
-                                return Response(
-                                    {
-                                        "code": 200,
-                                        "status": "success",
-                                        "message": "Login Successful",
-                                        "user_verification": the_serializer['is_verified'],
-                                        "phone_verification": the_serializer['is_phone_number_verified'],
-                                        "email_verification": the_serializer['is_email_verified'],
-                                        "user_type": the_serializer['user_type'],
-                                        "name": the_serializer['first_name'] + ' (Admin)',
-                                        "refresh": str(refresh),
-                                        "access": str(refresh.access_token)
-                                    },
-                                    status=status.HTTP_200_OK,
-                                )
-                            else:
-                                return error_response("User is not an admin. Kindly contact us for further assistance",
-                                                      status.HTTP_401_UNAUTHORIZED)
-                        else:
-                            return error_401("User is not active. Kindly contact us for further assistance")
+                        return Response(
+                            {
+                                "code": 200,
+                                "status": "success",
+                                "message": "Login Successful",
+                                "is_verified": the_serializer['is_verified'],
+                                "user_type": the_serializer['user_type'],
+                                "name": the_serializer['name'] + ' (Admin)',
+                                "email": the_serializer['email'],
+                                "refresh": str(refresh),
+                                "access": str(refresh.access_token)
+                            },
+                            status=status.HTTP_200_OK,
+                        )
                     else:
-                        return error_406("User is not verified. Kindly contact us for further assistance")
-
+                        return error_response(
+                            "User is not an admin. Kindly contact us for further assistance",
+                            status.HTTP_401_UNAUTHORIZED
+                        )
                 else:
-                    return error_response(
-                        "User is not active. Kindly contact us for further assistance",
-                        status.HTTP_401_UNAUTHORIZED
-                    )
+                    return error_406("User is not verified. Kindly contact us for further assistance")
+
             else:
                 return error_response("Incorrect Email/Password Inserted", status.HTTP_401_UNAUTHORIZED)
         else:
@@ -186,7 +161,7 @@ class ResetPasswordEmailView(APIView):
         if serializer.is_valid():
             email_address = serializer.data.get("email").lower()
             try:
-                keygen = generateKey()
+                keygen = GenerateKey()
                 key = base64.b32encode(keygen.return_value(email_address).encode()).decode("utf-8")
                 OTP = pyotp.TOTP(key, interval=settings.OTP_TIMEOUT)
                 otp_code = OTP.now()

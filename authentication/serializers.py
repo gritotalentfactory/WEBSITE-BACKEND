@@ -1,4 +1,5 @@
 import base64
+import re
 
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -7,52 +8,78 @@ from django.contrib.auth.password_validation import validate_password
 from decouple import config
 import pyotp
 from django.conf import settings
-from grito_talent_pool_server.utils import custom_normalize_email, generateKey
+from grito_talent_pool_server.utils import (
+    custom_normalize_email,
+    GenerateKey, send_otp_email
+)
 from .mixins import OTPVerificationMixin
 from .models import User
 
 
 class SuperAdminRegistrationSerializer(serializers.Serializer):
-    first_name = serializers.CharField(required=True)
-    last_name = serializers.CharField(required=True)
+    name = serializers.CharField(required=True)
+    username = serializers.CharField(required=True)
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
-    user_type = serializers.CharField(required=True)
 
     class Meta:
         model = User
         fields = "__all__"
 
+    @staticmethod
+    def generate_key(email):
+        keygen = GenerateKey()
+        key_bytes = keygen.return_value(email).encode()
+        key_base32 = base64.b32encode(key_bytes).decode('utf-8')
+        return key_base32
+
+    @staticmethod
+    def get_user_data(user):
+        serializer = UserUpdateVerifiedSerializer(user)
+        user_data = serializer.data
+        user_data["otp_code"] = None
+        return user_data
+
+    def send_otp_email(self, user):
+        key = self.generate_key(user.email)
+        OTP = pyotp.TOTP(key, interval=settings.OTP_TIMEOUT)
+        otp_code = OTP.now()
+        send_otp_email(user.email, otp_code, user.first_name)
+
+        user_data = self.get_user_data(user)
+        user_data["otp_code"] = otp_code
+
+    @staticmethod
+    def validate__password(value):
+        password_pattern = r'^(?=.*?[A-Z])(?=(.*[a-z]){1,})(?=(.*[\d]){1,})(?=(.*[\W]){1,})(?!.*\s).{8,}$'
+        if re.match(password_pattern, value) is None:
+            return 406, "Password must contain at least 8 characters, including one uppercase letter, one lowercase letter, one digit, and one special character."
+        return value
+
     def create(self, validated_data):
-        request = self.context.get("request")
-        user = request.user
+        email = custom_normalize_email(validated_data["email"])
+
+        existing_user = User.objects.filter(email=email).exists()
+        if existing_user:
+            return 406, "User with the provided email already exists."
+
         password = validated_data.pop("password")
-        email = validated_data["email"]
-        email = custom_normalize_email(email)
+        validated_password = self.validate__password(password)
+        if isinstance(validated_password, tuple):
+            return validated_password[0], validated_password[1]
+        user = User.objects.create(**validated_data)
+        user.set_password(validated_password)
+        user.is_verified = False
+        user.user_type = "super-admin"
+        user.save()
 
-        try:
-            existing_user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            existing_user = None
+        group, _ = Group.objects.get_or_create(name="super-admin")
+        user.groups.add(group)
 
-        if not existing_user:
-            mem = User.objects.create(**validated_data)
+        self.send_otp_email(user)
+        user_data = self.get_user_data(user)
 
-            mem.set_password(password)
-            group, _ = Group.objects.get_or_create(name="super-admin")
-            mem.is_verified = False
-            mem.is_active = True
-            mem.user_type = "super-admin"
-            mem.created_by = user.id
-            mem.save()
-            mem.groups.add(group)
-
-        else:
-            raise serializers.ValidationError(
-                {"code": 400, "status": "error", "message": "Admin user already exists"}
-            )
-
-        return validated_data
+        return 200, user_data
 
 
 class LoginSerializer(serializers.Serializer):
@@ -176,7 +203,7 @@ class ResendOTPSerializer(serializers.Serializer):
 
     @staticmethod
     def generate_key(email):
-        keygen = generateKey()
+        keygen = GenerateKey()
         key_bytes = keygen.return_value(email).encode()
         key_base32 = base64.b32encode(key_bytes).decode('utf-8')
         return key_base32

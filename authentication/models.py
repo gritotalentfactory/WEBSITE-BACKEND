@@ -21,20 +21,15 @@ class User(AbstractUser, PermissionsMixin):
     username = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(max_length=254, unique=True, db_index=True)
     phone = models.CharField(max_length=20, null=True, blank=True, unique=True)
-    first_name = models.CharField(max_length=255, null=True, blank=True)
-    middle_name = models.CharField(max_length=255, null=True, blank=True)
     image_url = models.TextField(null=True, blank=True)
-    last_name = models.CharField(max_length=255, null=True, blank=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
     gender = models.CharField(max_length=10, choices=GENDER, null=True, blank=True)
-    date_of_birth = models.CharField(max_length=10, null=True, blank=True)
     user_type = models.CharField(
         max_length=255, choices=USER_TYPE, null=True, blank=True
     )
     address = models.TextField(null=True, blank=True)
     country = CountryField(default="NG")
     is_verified = models.BooleanField(default=False, null=True, blank=True)
-    is_phone_number_verified = models.BooleanField(default=False, null=True, blank=True)
-    is_email_verified = models.BooleanField(default=False, null=True, blank=True)
     is_active = models.BooleanField(default=False, null=True, blank=True)
 
     USERNAME_FIELD = "email"

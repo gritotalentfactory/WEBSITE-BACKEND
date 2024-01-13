@@ -1,3 +1,6 @@
+import json
+from decouple import config
+import requests
 from datetime import datetime
 import re
 from django.core.exceptions import ValidationError
@@ -6,12 +9,35 @@ from rest_framework import status, serializers
 from django.http import JsonResponse
 from django.conf import settings
 
-"""
-NB: The debug settings need to be set to False for this to work
-"""
+
+def send_otp_email(email, otp_code, name):
+    try:
+        zepto_auth = config["ZEPTO_API_KEY"]
+        otp_template = config["otp_template"]
+
+        url = "https://api.zeptomail.com/v1.1/email/template"
+        payload_json = {
+            "merge_info": {
+                "name": name,
+                "OTP": otp_code
+            },
+            "template_key": otp_template,
+            "from": {"address": "noreply@slashfinances.com"},
+            "to": [{"email_address": {"address": email, "name": name}}]}
+
+        payload = json.dumps(payload_json)
+        headers = {
+            'accept': "application/json",
+            'content-type': "application/json",
+            'authorization': zepto_auth,
+        }
+        response = requests.request("POST", url, data=payload, headers=headers)
+        return response.text
+    except Exception as e:
+        print(e)
 
 
-class generateKey:
+class GenerateKey:
     @staticmethod
     def return_value(phone):
         return f"{phone}{datetime.date(datetime.now())}{settings.SECRET_KEY}"
@@ -106,17 +132,6 @@ def format_phone_number(phone_number):
 
     elif len(phone_number) > 2 and phone_number[:3] != "234" and phone_number[0] != "+":
         return f"234{phone_number[1:]}"
-
-
-def validate_phone(value):
-    pattern = re.compile(r"^\+?1?\d{9,15}$")
-    if not bool(pattern.match(value)):
-        raise ValidationError(
-            (
-                "Invalid! Phone number must be entered in the format: '+999999999'. Up to 15 digits allowed."
-            ),
-            params={"value": value},
-        )
 
 
 def custom_normalize_email(email):
