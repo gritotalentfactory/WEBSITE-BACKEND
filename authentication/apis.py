@@ -2,7 +2,6 @@ import base64
 import pyotp
 from django.contrib.auth import login, logout, authenticate
 from django.conf import settings
-from decouple import config
 
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
