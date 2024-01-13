@@ -2,28 +2,29 @@ import json
 from decouple import config
 import requests
 from datetime import datetime
-import re
-from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework import status, serializers
 from django.http import JsonResponse
 from django.conf import settings
 
 
-def send_otp_email(email, otp_code, name):
+def send_otp_email(email, otp_code, name, product_name="Grito Talent Pool"):
     try:
-        zepto_auth = config["ZEPTO_API_KEY"]
-        otp_template = config["otp_template"]
+        zepto_auth = config("ZEPTO_API_KEY")
+        otp_template = config("VERIFY_EMAIL_TEMPLATE")
 
         url = "https://api.zeptomail.com/v1.1/email/template"
         payload_json = {
             "merge_info": {
                 "name": name,
-                "OTP": otp_code
+                "OTP": otp_code,
+                "product_name": product_name
             },
             "template_key": otp_template,
-            "from": {"address": "noreply@slashfinances.com"},
-            "to": [{"email_address": {"address": email, "name": name}}]}
+            "from": {"address": "support@grito.africa"},
+            "to": [{"email_address": {"address": email, "name": name}}]
+        }
+        print(payload_json)
 
         payload = json.dumps(payload_json)
         headers = {
@@ -32,6 +33,7 @@ def send_otp_email(email, otp_code, name):
             'authorization': zepto_auth,
         }
         response = requests.request("POST", url, data=payload, headers=headers)
+
         return response.text
     except Exception as e:
         print(e)
