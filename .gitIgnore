@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 .env
 node_modules
 
@@ -38,6 +37,3 @@ Thumbs.db
 
 **/migrations/
 migrations/
-=======
-
->>>>>>> 058aa7acc3c34b0da087e0034f2210bfae2f5a66
