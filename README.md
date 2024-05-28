@@ -1,7 +1,11 @@
-# Grito Talents API Documentation
-This document provides an overview of the API endpoints and instructions for setting up and using the Grito Talents API. The API allows clients to manage talents and talent requests.
+
+
+# Grito Talents API
+
+The Grito Talents API allows clients to manage talents and talent requests, including creating, fetching, updating, and deleting talents. It uses MongoDB for data storage and Multer for image uploads.
 
 ## Table of Contents
+
 - Setup Instructions
 - Environment Variables
 - API Endpoints
@@ -12,37 +16,37 @@ This document provides an overview of the API endpoints and instructions for set
   - Delete Talent
   - Create Talent Request
 - Validation
-  
+- Testing with Postman
+
 ## Setup Instructions
+
 ### Prerequisites
+
 - Node.js (version 12 or higher)
 - MongoDB
-- Cloudinary Account
 
 ### Installation
+
 1. Clone the repository:
-   ```
+   ```bash
    git clone https://github.com/your-repository-url.git
    cd your-repository-folder
    ```
 
 2. Install dependencies:
-   ```
+   ```bash
    npm install
    ```
 
 3. Set up environment variables:
    Create a `.env` file in the root directory of your project and add the following environment variables:
-   ```
+   ```plaintext
    MONGODB_URL=your_mongodb_connection_string
-   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-   CLOUDINARY_API_KEY=your_cloudinary_api_key
-   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
    PORT=5000
    ```
 
 4. Start the server:
-   ```
+   ```bash
    npm start
    ```
 
@@ -51,9 +55,6 @@ The server should now be running on the port specified in your `.env` file.
 ## Environment Variables
 
 - `MONGODB_URL`: MongoDB connection string
-- `CLOUDINARY_CLOUD_NAME`: Cloudinary cloud name
-- `CLOUDINARY_API_KEY`: Cloudinary API key
-- `CLOUDINARY_API_SECRET`: Cloudinary API secret
 - `PORT`: Port number for the server
 
 ## API Endpoints
@@ -62,20 +63,18 @@ The server should now be running on the port specified in your `.env` file.
 
 **Endpoint:** `POST /admin/talents`
 
-**Description:** Creates a new talent and uploads the provided image to Cloudinary.
+**Description:** Creates a new talent and uploads the provided image using Multer.
 
 **Request Body:**
-```json
-{
-  "name": "Buzz brain",
-  "country": "Nigeria",
-  "skillSet": ["Fullstack Development", "Data Analytics"],
-  "level": "Intermediate",
-  "gender": "male",
-  "portfolio": "http://portfolio.link",
-  "imageUrl": "profile.jpeg"
- }
-```
+
+- Form-data:
+  - `name`: String
+  - `country`: String
+  - `skillSet`: Array of Strings
+  - `level`: String
+  - `gender`: String
+  - `portfolio`: String
+  - `image`: File
 
 **Responses:**
 - `201 Created`: Talent created successfully.
@@ -108,17 +107,15 @@ The server should now be running on the port specified in your `.env` file.
 **Description:** Updates an existing talent.
 
 **Request Body:**
-```json
-{
-  "name": "Favour",
-  "country": "Ghana",
-  "skillSet": ["UI Designer"],
-  "level": "professional",
-  "gender": "female",
-  "portfolio": "http://portfolio.link",
-  "imageUrl": "profile.jpeg"
-}
-```
+
+- Form-data:
+  - `name`: String
+  - `country`: String
+  - `skillSet`: Array of Strings
+  - `level`: String
+  - `gender`: String
+  - `portfolio`: String
+  - `image`: File (optional)
 
 **Responses:**
 - `200 OK`: Talent updated successfully.
@@ -145,11 +142,11 @@ The server should now be running on the port specified in your `.env` file.
 **Request Body:**
 ```json
 {
-  "clientName": "Mr. peter pan",
-  "country": "Nigeria",
-  "skillSet": ["Fullstack Development", "Data Analytics"],
-  "level": "intermediate",
-  "gender": "male"
+  "clientName": "Acme Corp",
+  "country": "Germany",
+  "skillSet": ["Java", "Spring"],
+  "level": "Junior",
+  "gender": "Any"
 }
 ```
 
@@ -176,6 +173,88 @@ The API uses `express-validator` for input validation. Below are the validation 
 - `level`: Required
 - `gender`: Required
 
----
+## Testing with Postman
 
-By following the above documentation, you can set up, run, and use the Grito Talents API. If you have any further questions or issues, please refer to the issues section of the repository or contact the project maintainers.
+### Testing the API Endpoints
+
+#### Create Talent
+
+1. **Open Postman**.
+2. **Create a New Request**:
+   - Set the request method to `POST`.
+   - Enter the URL: `http://localhost:5000/admin/talents`.
+3. **Set Headers**:
+   - Key: `Content-Type`, Value: `multipart/form-data`.
+4. **Set Body**:
+   - Select `form-data`.
+   - Add the following fields:
+     - `name`: `Buzz Brain`
+     - `country`: `Nigeria`
+     - `skillSet`: `Nodejs, MongoDB`
+     - `level`: `Intermediate`
+     - `gender`: `Male`
+     - `portfolio`: `https://portfolio.example.com`
+     - `image`: File (Choose a file from your computer).
+5. **Send the Request**.
+6. **Check the Response**: You should receive a `201 Created` response with the created talent.
+
+#### Get Talents
+
+1. **Create a New Request**:
+   - Set the request method to `GET`.
+   - Enter the URL: `http://localhost:5000/talents`.
+2. **Send the Request**.
+3. **Check the Response**: You should receive a `200 OK` response with an array of talents.
+
+#### Get Talents for Admin
+
+1. **Create a New Request**:
+   - Set the request method to `GET`.
+   - Enter the URL: `http://localhost:5000/admin/talents`.
+2. **Send the Request**.
+3. **Check the Response**: You should receive a `200 OK` response with an array of talents.
+
+#### Update Talent
+
+1. **Create a New Request**:
+   - Set the request method to `PATCH`.
+   - Enter the URL: `http://localhost:5000/admin/talents/:id` (replace `:id` with the actual talent ID).
+2. **Set Headers**:
+   - Key: `Content-Type`, Value: `multipart/form-data`.
+3. **Set Body**:
+   - Select `form-data`.
+   - Add the fields to update (similar to the create talent request).
+4. **Send the Request**.
+5. **Check the Response**: You should receive a `200 OK` response with the updated talent.
+
+#### Delete Talent
+
+1. **Create a New Request**:
+   - Set the request method to `DELETE`.
+   - Enter the URL: `http://localhost:5000/admin/talents/:id` (replace `:id` with the actual talent ID).
+2. **Send the Request**.
+3. **Check the Response**: You should receive a `200 OK` response with a success message.
+
+#### Create Talent Request
+
+1. **Create a New Request**:
+   - Set the request method to `POST`.
+   - Enter the URL: `http://localhost:5000/talent-request`.
+2. **Set Body**:
+   - Select `raw` and `JSON`.
+   - Add the following JSON:
+     ```json
+     {
+       "clientName": "Mr Peter pan",
+       "country": "Germany",
+       "skillSet": ["Nodejs", "MongoDB"],
+       "level": "Intermediate",
+       "gender": "Male"
+     }
+     ```
+3. **Send the Request**.
+4. **Check the Response**: You should receive a `201 Created` response with the submitted talent request.
+
+By following the above instructions, you can set up, run, and test the Grito Talents API. If you have any further questions or issues, please refer to the issues section of the repository or contact the project maintainers.
+
+---
