@@ -12,6 +12,10 @@ const talentSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    countryCode: {
+      type: String,
+      required: true
+    },
     skillSet: {
       type: [String],
       required: true

@@ -9,6 +9,14 @@ const talentRequestSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  clientEmail: {
+    type: String,
+    required: true
+  },
+  clientWnum: {
+    type: String,
+    required: true
+  },
   country: {
     type: String,
     required: true
