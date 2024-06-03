@@ -3,23 +3,22 @@ const mongoose = require('mongoose');   // Require mongoose
 const express = require('express');     // Require express
 const dotenv = require('dotenv');       // Require dotenv
 const multer = require('multer'); // Require multer
-const path = require('path'); // Require path for file paths
-const cors = require('cors'); // Require path for file paths
-
+const cors = require('cors'); // Require cors
+const jwt = require('jsonwebtoken'); // Require jsonwebtoken
+const cookieParser = require('cookie-parser'); // Require cookie-parser
 
 // Configure env
 dotenv.config();
 
-
-
 // Require Models
-const Talent = require('./models/talentModel'); // Require model for storing talent requests
-const TalentRequest = require('./models/talentRequestModel'); // Model for storing talent requests
+const Talent = require('./models/talentModel'); // Require model for storing talent information
+const TalentRequest = require('./models/talentRequestModel'); // Require Model for storing talent requests
+const Admin = require('./models/adminModel'); // Require Model for admin login
 
 // Require Middleware
-const { validateTalent, validationResult } = require('./validators/talentValidator');
-const { validateTalentRequest } = require('./validators/talentRequestValidator');
-
+const authMiddleware = require('./middleware/authRoute'); // Require middleware for protected routes
+const { validateTalent, validationResult } = require('./middleware/talentValidator'); // Require middleware for talent validation
+const { validateTalentRequest } = require('./middleware/talentRequestValidator'); // Require middleware for talent request validation
 
 // Initialize express application
 const app = express();
@@ -28,6 +27,7 @@ const app = express();
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cors()); // Use the CORS middleware
+app.use(cookieParser()); // Use cookie-parser
 
 // Connect mongoose to database
 const connect = mongoose.connect(process.env.MONGODB_URL);
@@ -51,6 +51,88 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
+// Configure CORS Middleware
+const allowedOrigins = ['http://localhost:3000'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+// Admin Login API 
+app.post('/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(400).json({ message: 'Invalid Login details' });
+    }
+
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid Login details' });
+    }
+
+    const token = jwt.sign(
+      { id: admin._id, username: admin.username, email: admin.email },
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Set the token as a cookie
+    res.cookie('adminData', token, {
+      httpOnly: true, // Prevents JavaScript from accessing the cookie
+      secure: process.env.NODE_ENV === 'production', // Ensures the cookie is sent over HTTPS
+      sameSite: 'strict', // Helps mitigate CSRF attacks
+      maxAge: 3600000 // 1 hour
+    });
+
+    res.json({ message: 'Login Successful', token });
+  } catch (error) {
+    res.status(500).json({ message: 'Error logging in', error });
+  }
+});
+
+
+// Admin Register API (should be used only once)
+// app.post('/admin/register', async (req, res) => {
+//   const { email, password, username } = req.body;
+
+//   if (!email || !password || !username) {
+//     return res.status(400).json({ message: 'Email, password and username are required' });
+//   }
+
+//   try {
+//     const existingAdmin = await Admin.findOne({ email });
+//     if (existingAdmin) {
+//       return res.status(400).json({ message: 'Admin already exists' });
+//     }
+
+//     const newAdmin = new Admin({ email, password, username });
+//     await newAdmin.save();
+
+//     res.status(201).json({ message: 'Admin registered successfully' });
+//   } catch (error) {
+//     res.status(500).json({ message: 'Error registering admin', error });
+//   }
+// });
+
+// Admin Logout API
+app.post('/admin/logout', (req, res) => {
+  res.clearCookie('adminData', { 
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production' 
+  });
+  res.status(200).json({ message: 'Logout successful' });
+});
 
 //  ****************** CRUD OPERATION ******************  \\
 
@@ -104,7 +186,7 @@ app.get('/talents', async (req, res) => {
 });
 
 // API to Fetch Talents for Admin Dashboard // Tested
-app.get('/admin/talents', async (req, res) => {
+app.get('/admin/talents', authMiddleware, async (req, res) => {
   try {
     const talents = await Talent.find();
     res.json(talents);
@@ -116,7 +198,7 @@ app.get('/admin/talents', async (req, res) => {
 // ----------------- UPDATE / EDIT TALENTS ------------------
 
 // API to Update Talent // Tested
-app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (req, res) => {
+app.patch('/admin/talents/:id', authMiddleware, upload.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -158,7 +240,7 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
 // ----------------- DELETE TALENTS ------------------
 
 // API to Delete Talent // Tested
-app.delete('/admin/talents/:id', async (req, res) => {
+app.delete('/admin/talents/:id', authMiddleware, async (req, res) => {
     try {
       const talent = await Talent.findByIdAndDelete(req.params.id);
       if (!talent) {
@@ -170,9 +252,11 @@ app.delete('/admin/talents/:id', async (req, res) => {
     }
 });
 
-// ----------------- TALENT REQUEST ------------------
 
-// API to Handle Talent Requests // Tested
+
+// ----------------- CREATE TALENT REQUEST ------------------
+
+// API to Handle Talent Request // Tested
 app.post('/talent-request', validateTalentRequest, async (req, res) => {
   // Validate inputs
   const errors = validationResult(req);
@@ -191,8 +275,9 @@ app.post('/talent-request', validateTalentRequest, async (req, res) => {
 });
 
 // ----------------- READ / DISPLAY REQUESTED TALENT ------------------
+
 // API to Fetch Talents for Admin Dashboard // Tested
-app.get('/talent-request', async (req, res) => {
+app.get('/admin/talent-request', authMiddleware, async (req, res) => {
   try {
     const requestedTalents = await TalentRequest.find();
     res.json(requestedTalents);
