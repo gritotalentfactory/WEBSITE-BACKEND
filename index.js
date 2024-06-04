@@ -25,8 +25,16 @@ app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cookieParser()); // Use cookie-parser
 
+// Request logging middleware
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  console.log('--- New Request ---');
+  console.log(`Method: ${req.method}`);
+  console.log(`URL: ${req.url}`);
+  console.log('Headers:', req.headers);
+  if (req.method === 'GET' || req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
+    console.log('Body:', req.body);
+  }
+  console.log('Query Params:', req.query);
   next();
 });
 
