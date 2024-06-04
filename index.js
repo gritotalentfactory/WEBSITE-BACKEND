@@ -53,12 +53,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Configure CORS Middleware
-app.use(cors({
-  origin: function (origin, callback) {
-    callback(null, true);
-  },
-  credentials: true
-}));
+app.use(cors());
 
 // Admin Login API 
 app.post('/admin/login', async (req, res) => {
