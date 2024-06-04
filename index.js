@@ -121,7 +121,7 @@ app.post('/admin/logout', (req, res) => {
 
 // ----------------- CREATE TALENTS ------------------
 // API to Create Talent   // Tested
-app.post('/admin/talents', authMiddleware, upload.single('image'), validateTalent, async (req, res) => {
+app.post('/admin/talents', upload.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -169,7 +169,7 @@ app.get('/talents', async (req, res) => {
 });
 
 // API to Fetch Talents for Admin Dashboard // Tested
-app.get('/admin/talents', authMiddleware, async (req, res) => {
+app.get('/admin/talents', async (req, res) => {
   try {
     const talents = await Talent.find();
     res.json(talents);
@@ -223,7 +223,7 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
 // ----------------- DELETE TALENTS ------------------
 
 // API to Delete Talent // Tested
-app.delete('/admin/talents/:id', authMiddleware, async (req, res) => {
+app.delete('/admin/talents/:id', async (req, res) => {
     try {
       const talent = await Talent.findByIdAndDelete(req.params.id);
       if (!talent) {
@@ -260,7 +260,7 @@ app.post('/talent-request', validateTalentRequest, async (req, res) => {
 // ----------------- READ / DISPLAY REQUESTED TALENT ------------------
 
 // API to Fetch Talents for Admin Dashboard // Tested
-app.get('/admin/talent-request', authMiddleware, async (req, res) => {
+app.get('/admin/talent-request', async (req, res) => {
   try {
     const requestedTalents = await TalentRequest.find();
     res.json(requestedTalents);
