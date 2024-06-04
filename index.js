@@ -53,15 +53,9 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Configure CORS Middleware
-const allowedOrigins = ['http://localhost:3000'];
-
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    callback(null, true);
   },
   credentials: true
 }));
