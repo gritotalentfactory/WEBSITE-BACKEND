@@ -14,29 +14,10 @@ dotenv.config();
 const app = express();
 
 // Use modules
-app.use(cors({
-  origin: 'http://localhost:3000', // or your frontend URL if it's deployed
-  methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
-  allowedHeaders: 'Content-Type,Authorization',
-  credentials: true
-})); // Use the CORS middleware
-
+app.use(cors()); // Use the CORS middleware
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cookieParser()); // Use cookie-parser
-
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log('--- New Request ---');
-  console.log(`Method: ${req.method}`);
-  console.log(`URL: ${req.url}`);
-  console.log('Headers:', req.headers);
-  if (req.method === 'GET' || req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH') {
-    console.log('Body:', req.body);
-  }
-  console.log('Query Params:', req.query);
-  next();
-});
 
 // Require Models
 const Talent = require('./models/talentModel'); // Require model for storing talent information
