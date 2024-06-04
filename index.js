@@ -20,9 +20,15 @@ app.use(cors({
   allowedHeaders: 'Content-Type,Authorization',
   credentials: true
 })); // Use the CORS middleware
+
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cookieParser()); // Use cookie-parser
+
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 // Require Models
 const Talent = require('./models/talentModel'); // Require model for storing talent information
