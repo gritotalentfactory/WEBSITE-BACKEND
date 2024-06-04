@@ -12,7 +12,9 @@
       "dest": "/index.js"
     }
   ],
-  "headers": [{
-      "Access-Control-Allow-Origin": "*"
-    }]
+  "headers": [
+    { "name": "Access-Control-Allow-Origin", "value": "*" },
+    { "name": "Access-Control-Allow-Methods", "value": "GET, HEAD, POST, PUT, PATCH, DELETE" },
+    { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+  ]
 }
