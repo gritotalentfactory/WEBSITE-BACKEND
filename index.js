@@ -10,6 +10,15 @@ const cookieParser = require('cookie-parser'); // Require cookie-parser
 // Configure env
 dotenv.config();
 
+// Initialize express application
+const app = express();
+
+// Use modules
+app.use(cors()); // Use the CORS middleware
+app.use(express.json());
+app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
+app.use(cookieParser()); // Use cookie-parser
+
 // Require Models
 const Talent = require('./models/talentModel'); // Require model for storing talent information
 const TalentRequest = require('./models/talentRequestModel'); // Require Model for storing talent requests
@@ -20,14 +29,9 @@ const authMiddleware = require('./middleware/authRoute'); // Require middleware 
 const { validateTalent, validationResult } = require('./middleware/talentValidator'); // Require middleware for talent validation
 const { validateTalentRequest } = require('./middleware/talentRequestValidator'); // Require middleware for talent request validation
 
-// Initialize express application
-const app = express();
 
-// Use modules
-app.use(express.json());
-app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
-app.use(cors()); // Use the CORS middleware
-app.use(cookieParser()); // Use cookie-parser
+
+
 
 // Connect mongoose to database
 const connect = mongoose.connect(process.env.MONGODB_URL);
@@ -53,7 +57,12 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Configure CORS Middleware
-app.use(cors());
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     callback(null, true);
+//   },
+//   credentials: true
+// }));
 
 // Admin Login API 
 app.post('/admin/login', async (req, res) => {
