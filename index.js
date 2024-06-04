@@ -14,7 +14,12 @@ dotenv.config();
 const app = express();
 
 // Use modules
-app.use(cors()); // Use the CORS middleware
+app.use(cors({
+  origin: 'http://localhost:3000', // or your frontend URL if it's deployed
+  methods: 'GET,POST,PUT,DELETE,PATCH,OPTIONS',
+  allowedHeaders: 'Content-Type,Authorization',
+  credentials: true
+})); // Use the CORS middleware
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cookieParser()); // Use cookie-parser
