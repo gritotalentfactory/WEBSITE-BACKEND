@@ -9,11 +9,13 @@ const cookieParser = require('cookie-parser'); // Require cookie-parser
 const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
 
+// Initialize express application
+const app = express();
+
 // Configure env
 dotenv.config();
 
-// Initialize express application
-const app = express();
+
 
 // Use modules
 // app.use(cors()); // Use the CORS middleware
@@ -31,11 +33,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-
-app.use(express.json());
-app.use(cookieParser()); // Use cookie-parser
-
 // Configure multer for file upload
 const upload = multer({ dest: 'uploads/' });
 
@@ -45,6 +42,9 @@ cloudinary.config({
   api_key: '259936754944698',
   api_secret: 'bTfV4_taJPd1zxxk1KJADTL8JdU'
 });
+app.use(express.json());
+app.use(cookieParser()); // Use cookie-parser
+
 
 
 
