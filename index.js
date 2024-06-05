@@ -39,10 +39,17 @@ app.use('/uploads', express.static('uploads')); // Serve static files from the u
 app.use(cookieParser()); // Use cookie-parser
 
 // Configure Cloudinary
+// cloudinary.config({
+//   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+//   api_key: process.env.CLOUDINARY_API_KEY,
+//   api_secret: process.env.CLOUDINARY_API_SECRET
+// });
+
+// Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  cloud_name: 'df2q6gyuq',
+  api_key: '259936754944698',
+  api_secret: 'bTfV4_taJPd1zxxk1KJADTL8JdU'
 });
 
 
