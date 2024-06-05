@@ -127,9 +127,8 @@ app.post('/admin/talents', upload.single('image'), validateTalent, async (req, r
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio  } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
-
-  if (!image) {
+  
+  if (!req.file) {
     return res.status(400).json({ message: 'Image is required' });
   }
 
@@ -192,8 +191,6 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
-
 
   try {
       // Check if talent exists
@@ -212,7 +209,7 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
       talent.portfolio = portfolio;
 
       // Upload to Cloudinary if a new image is provided
-      if (image) {
+      if (req.file) {
         const result = await cloudinary.uploader.upload(req.file.path);
         talent.image = result.secure_url;
       }
