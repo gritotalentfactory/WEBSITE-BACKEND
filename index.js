@@ -7,14 +7,24 @@ const cors = require('cors'); // Require cors
 const jwt = require('jsonwebtoken'); // Require jsonwebtoken
 const cookieParser = require('cookie-parser'); // Require cookie-parser
 const cloudinary = require('cloudinary').v2;
-const fs = require('fs');
 
-// Initialize express application
-const app = express();
+// Require Models
+const Talent = require('./models/talentModel'); // Require model for storing talent information
+const TalentRequest = require('./models/talentRequestModel'); // Require Model for storing talent requests
+const Admin = require('./models/adminModel'); // Require Model for admin login
+
+// Require Middleware
+const authMiddleware = require('./middleware/authRoute'); // Require middleware for protected routes
+const { validateTalent, validationResult } = require('./middleware/talentValidator'); // Require middleware for talent validation
+const { validateTalentRequest } = require('./middleware/talentRequestValidator'); // Require middleware for talent request validation
 
 // Configure env
 dotenv.config();
 
+// Initialize express application
+const app = express();
+// Configure multer for file upload
+const upload = multer();
 
 
 // Use modules
@@ -33,30 +43,15 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// Configure multer for file upload
-const upload = multer({ dest: 'uploads/' });
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: 'df2q6gyuq',
-  api_key: '259936754944698',
-  api_secret: 'bTfV4_taJPd1zxxk1KJADTL8JdU'
-});
 app.use(express.json());
 app.use(cookieParser()); // Use cookie-parser
 
-
-
-
-// Require Models
-const Talent = require('./models/talentModel'); // Require model for storing talent information
-const TalentRequest = require('./models/talentRequestModel'); // Require Model for storing talent requests
-const Admin = require('./models/adminModel'); // Require Model for admin login
-
-// Require Middleware
-const authMiddleware = require('./middleware/authRoute'); // Require middleware for protected routes
-const { validateTalent, validationResult } = require('./middleware/talentValidator'); // Require middleware for talent validation
-const { validateTalentRequest } = require('./middleware/talentRequestValidator'); // Require middleware for talent request validation
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 
 // Connect mongoose to database
