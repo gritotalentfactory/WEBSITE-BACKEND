@@ -34,8 +34,10 @@ app.use(cors(corsOptions));
 
 
 app.use(express.json());
-app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cookieParser()); // Use cookie-parser
+
+// Configure multer for file upload
+const upload = multer({ dest: 'uploads/' });
 
 // Configure Cloudinary
 cloudinary.config({
@@ -43,6 +45,7 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
 
 
 // Require Models
@@ -67,35 +70,7 @@ connect.then(() => {
     console.log("Database not connected");
 });
 
-// Configure Local Storage for Multer
-const localStorage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    const uploadPath = 'uploads/';
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: function(req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
 
-// Initialize multer with local storage
-const uploadLocal = multer({ storage: localStorage });
-
-// Function to upload file to Cloudinary
-const uploadToCloudinary = (filePath) => {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(filePath, { folder: 'talents' }, (error, result) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(result);
-      }
-    });
-  });
-};
 
 
 // Admin Login API 
@@ -149,7 +124,7 @@ app.post('/admin/logout', (req, res) => {
 
 // ----------------- CREATE TALENTS ------------------
 // API to Create Talent   // Tested
-app.post('/admin/talents', uploadLocal.single('image'), validateTalent, async (req, res) => {
+app.post('/admin/talents', upload.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -157,15 +132,16 @@ app.post('/admin/talents', uploadLocal.single('image'), validateTalent, async (r
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio  } = req.body;
-  const imageLocal = req.file ? `/uploads/${req.file.filename}` : null;
+  const image = req.file ? `/uploads/${req.file.filename}` : null;
 
-  if (!imageLocal) {
+  if (!image) {
     return res.status(400).json({ message: 'Image is required' });
   }
 
   try {
-    // Upload to Cloudinary
-    const cloudinaryResult = await uploadToCloudinary(req.file.path);
+
+    // Upload file to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path);
 
 
     // Create a new talent
@@ -177,8 +153,7 @@ app.post('/admin/talents', uploadLocal.single('image'), validateTalent, async (r
       level,
       gender,
       portfolio,
-      image: cloudinaryResult.secure_url,
-      imageLocal,
+      image: result.secure_url
     });
 
     // Save to the database
@@ -214,7 +189,7 @@ app.get('/admin/talents', async (req, res) => {
 // ----------------- UPDATE / EDIT TALENTS ------------------
 
 // API to Update Talent // Tested
-app.patch('/admin/talents/:id', uploadLocal.single('image'), validateTalent, async (req, res) => {
+app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -222,7 +197,8 @@ app.patch('/admin/talents/:id', uploadLocal.single('image'), validateTalent, asy
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio } = req.body;
-  const imageLocal = req.file ? `/uploads/${req.file.filename}` : null;
+  const image = req.file ? `/uploads/${req.file.filename}` : null;
+
 
   try {
       // Check if talent exists
@@ -230,12 +206,6 @@ app.patch('/admin/talents/:id', uploadLocal.single('image'), validateTalent, asy
       if (!talent) {
         return res.status(404).json({ message: 'Talent not found' });
       }
-
-      // Upload to Cloudinary if a new image is provided
-    let cloudinaryResult = null;
-    if (imageLocal) {
-      cloudinaryResult = await uploadToCloudinary(req.file.path);
-    }
 
       // Update talent data
       talent.name = name;
@@ -246,9 +216,10 @@ app.patch('/admin/talents/:id', uploadLocal.single('image'), validateTalent, asy
       talent.gender = gender;
       talent.portfolio = portfolio;
 
-      // Update image if provided
-      if (cloudinaryResult) {
-        talent.image = cloudinaryResult.secure_url;
+      // Upload to Cloudinary if a new image is provided
+      if (image) {
+        const result = await cloudinary.uploader.upload(req.file.path);
+        talent.image = result.secure_url;
       }
 
       // Save updated talent to the database
