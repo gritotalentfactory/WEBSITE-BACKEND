@@ -2,11 +2,12 @@
 const mongoose = require('mongoose');   // Require mongoose
 const express = require('express');     // Require express
 const dotenv = require('dotenv');       // Require dotenv
-const multer = require('multer'); // Require multer
-const cors = require('cors'); // Require cors
-const jwt = require('jsonwebtoken'); // Require jsonwebtoken
+const multer = require('multer');       // Require multer
+const cors = require('cors');           // Require cors
+const jwt = require('jsonwebtoken');    // Require jsonwebtoken
 const cookieParser = require('cookie-parser'); // Require cookie-parser
 const cloudinary = require('cloudinary').v2;
+const streamifier = require('streamifier');    // Require streamifier to handle buffer streams
 
 // Require Models
 const Talent = require('./models/talentModel'); // Require model for storing talent information
@@ -23,12 +24,12 @@ dotenv.config();
 
 // Initialize express application
 const app = express();
-// Configure multer for file upload
-const upload = multer({ dest: 'uploads/' });
 
+// Configure multer for file upload
+const storage = multer.memoryStorage(); // Use memory storage to handle file uploads in memory
+const upload = multer({ storage });
 
 // Use modules
-// app.use(cors()); // Use the CORS middleware
 const allowedOrigins = ['http://localhost:3000'];
 
 const corsOptions = {
@@ -53,20 +54,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-
 // Connect mongoose to database
 const connect = mongoose.connect(process.env.MONGODB_URL);
 
 // Check if database is connected or not
 connect.then(() => {
-    console.log("Database connected successfully");
-})
-.catch(() => {
-    console.log("Database not connected");
+  console.log("Database connected successfully");
+}).catch(() => {
+  console.log("Database not connected");
 });
-
-
-
 
 // Admin Login API 
 app.post('/admin/login', async (req, res) => {
@@ -103,7 +99,6 @@ app.post('/admin/login', async (req, res) => {
   }
 });
 
-
 // Admin Logout API
 app.post('/admin/logout', (req, res) => {
   res.clearCookie('adminData', { 
@@ -113,12 +108,20 @@ app.post('/admin/logout', (req, res) => {
   res.status(200).json({ message: 'Logout successful' });
 });
 
+// CRUD OPERATIONS
 
+// Function to upload a stream to Cloudinary
+const uploadStreamToCloudinary = (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream((error, result) => {
+      if (error) reject(error);
+      else resolve(result);
+    });
+    streamifier.createReadStream(fileBuffer).pipe(uploadStream);
+  });
+};
 
-//  ****************** CRUD OPERATION ******************  \\
-
-// ----------------- CREATE TALENTS ------------------
-// API to Create Talent   // Tested
+// CREATE TALENTS
 app.post('/admin/talents', upload.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
@@ -126,18 +129,16 @@ app.post('/admin/talents', upload.single('image'), validateTalent, async (req, r
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, country, countryCode, skillSet, level, gender, portfolio  } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const { name, country, countryCode, skillSet, level, gender, portfolio } = req.body;
+  const image = req.file;
 
   if (!image) {
     return res.status(400).json({ message: 'Image is required' });
   }
 
   try {
-
     // Upload file to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path);
-
+    const result = await uploadStreamToCloudinary(image.buffer);
 
     // Create a new talent
     const newTalent = new Talent({
@@ -158,20 +159,20 @@ app.post('/admin/talents', upload.single('image'), validateTalent, async (req, r
     res.status(400).json({ message: 'Error creating talent', error });
   }
 });
-  
-// ----------------- READ / DISPLAY TALENTS ------------------
 
-// API to Fetch Talents for Carousel // Tested
+// READ / DISPLAY TALENTS
+
+// Fetch Talents for Carousel
 app.get('/talents', async (req, res) => {
   try {
-      const talents = await Talent.find();
-      res.json(talents);
+    const talents = await Talent.find();
+    res.json(talents);
   } catch (error) {
-      res.status(500).json({ message: 'Error fetching talents', error });
+    res.status(500).json({ message: 'Error fetching talents', error });
   }
 });
 
-// API to Fetch Talents for Admin Dashboard // Tested
+// Fetch Talents for Admin Dashboard
 app.get('/admin/talents', async (req, res) => {
   try {
     const talents = await Talent.find();
@@ -181,9 +182,9 @@ app.get('/admin/talents', async (req, res) => {
   }
 });
 
-// ----------------- UPDATE / EDIT TALENTS ------------------
+// UPDATE / EDIT TALENTS
 
-// API to Update Talent // Tested
+// Update Talent
 app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
@@ -192,59 +193,57 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const image = req.file;
 
   try {
-      // Check if talent exists
-      let talent = await Talent.findById(req.params.id);
-      if (!talent) {
-        return res.status(404).json({ message: 'Talent not found' });
-      }
-
-      // Update talent data
-      talent.name = name;
-      talent.country = country;
-      talent.countryCode = countryCode;
-      talent.skillSet = skillSet;
-      talent.level = level;
-      talent.gender = gender;
-      talent.portfolio = portfolio;
-
-      // Upload to Cloudinary if a new image is provided
-      if (image) {
-        const result = await cloudinary.uploader.upload(req.file.path);
-        talent.image = result.secure_url;
-      }
-
-      // Save updated talent to the database
-      await talent.save();
-
-      res.json({ message : "Talent updated successfully", talent : talent });
-    } catch (error) {
-      res.status(400).json({ message: 'Error updating talent', error });
+    // Check if talent exists
+    let talent = await Talent.findById(req.params.id);
+    if (!talent) {
+      return res.status(404).json({ message: 'Talent not found' });
     }
+
+    // Update talent data
+    talent.name = name;
+    talent.country = country;
+    talent.countryCode = countryCode;
+    talent.skillSet = skillSet;
+    talent.level = level;
+    talent.gender = gender;
+    talent.portfolio = portfolio;
+
+    // Upload to Cloudinary if a new image is provided
+    if (image) {
+      const result = await uploadStreamToCloudinary(image.buffer);
+      talent.image = result.secure_url;
+    }
+
+    // Save updated talent to the database
+    await talent.save();
+
+    res.json({ message: "Talent updated successfully", talent });
+  } catch (error) {
+    res.status(400).json({ message: 'Error updating talent', error });
+  }
 });
 
-// ----------------- DELETE TALENTS ------------------
+// DELETE TALENTS
 
-// API to Delete Talent // Tested
+// Delete Talent
 app.delete('/admin/talents/:id', async (req, res) => {
-    try {
-      const talent = await Talent.findByIdAndDelete(req.params.id);
-      if (!talent) {
-        return res.status(404).json({ message: 'Talent not found' });
-      }
-      res.json({ message: 'Talent deleted successfully' });
-    } catch (error) {
-      res.status(400).json({ message: 'Error deleting talent', error });
+  try {
+    const talent = await Talent.findByIdAndDelete(req.params.id);
+    if (!talent) {
+      return res.status(404).json({ message: 'Talent not found' });
     }
+    res.json({ message: 'Talent deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ message: 'Error deleting talent', error });
+  }
 });
 
+// CREATE TALENT REQUEST
 
-
-// ----------------- CREATE TALENT REQUEST ------------------
-
-// API to Handle Talent Request // Tested
+// Handle Talent Request
 app.post('/talent-request', validateTalentRequest, async (req, res) => {
   // Validate inputs
   const errors = validationResult(req);
@@ -256,7 +255,7 @@ app.post('/talent-request', validateTalentRequest, async (req, res) => {
   try {
     const request = new TalentRequest(req.body);
     await request.save();
-    res.status(201).json({ message: 'Talent request submitted successfully', data: { clientName, country,  clientEmail, clientWnum, skillSet, level, gender } });
+    res.status(201).json({ message: 'Talent request submitted successfully', data: { clientName, country, clientEmail, clientWnum, skillSet, level, gender } });
   } catch (error) {
     res.status(400).json({ message: 'Error submitting talent request', error });
   }
