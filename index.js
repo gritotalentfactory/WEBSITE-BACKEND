@@ -7,7 +7,6 @@ const cors = require('cors'); // Require cors
 const jwt = require('jsonwebtoken'); // Require jsonwebtoken
 const cookieParser = require('cookie-parser'); // Require cookie-parser
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const fs = require('fs');
 
 // Configure env
