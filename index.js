@@ -39,17 +39,10 @@ app.use('/uploads', express.static('uploads')); // Serve static files from the u
 app.use(cookieParser()); // Use cookie-parser
 
 // Configure Cloudinary
-// cloudinary.config({
-//   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-//   api_key: process.env.CLOUDINARY_API_KEY,
-//   api_secret: process.env.CLOUDINARY_API_SECRET
-// });
-
-// Configure Cloudinary
 cloudinary.config({
-  cloud_name: 'df2q6gyuq',
-  api_key: '259936754944698',
-  api_secret: 'bTfV4_taJPd1zxxk1KJADTL8JdU'
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 
@@ -90,7 +83,7 @@ const localStorage = multer.diskStorage({
 });
 
 // Initialize multer with local storage
-const upload = multer({ storage: localStorage });
+const uploadLocal = multer({ storage: localStorage });
 
 // Function to upload file to Cloudinary
 const uploadToCloudinary = (filePath) => {
@@ -157,7 +150,7 @@ app.post('/admin/logout', (req, res) => {
 
 // ----------------- CREATE TALENTS ------------------
 // API to Create Talent   // Tested
-app.post('/admin/talents', upload.single('image'), validateTalent, async (req, res) => {
+app.post('/admin/talents', uploadLocal.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -222,7 +215,7 @@ app.get('/admin/talents', async (req, res) => {
 // ----------------- UPDATE / EDIT TALENTS ------------------
 
 // API to Update Talent // Tested
-app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (req, res) => {
+app.patch('/admin/talents/:id', uploadLocal.single('image'), validateTalent, async (req, res) => {
   // Check validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
