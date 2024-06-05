@@ -6,6 +6,9 @@ const multer = require('multer'); // Require multer
 const cors = require('cors'); // Require cors
 const jwt = require('jsonwebtoken'); // Require jsonwebtoken
 const cookieParser = require('cookie-parser'); // Require cookie-parser
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const fs = require('fs');
 
 // Configure env
 dotenv.config();
@@ -35,6 +38,14 @@ app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 app.use(cookieParser()); // Use cookie-parser
 
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+
 // Require Models
 const Talent = require('./models/talentModel'); // Require model for storing talent information
 const TalentRequest = require('./models/talentRequestModel'); // Require Model for storing talent requests
@@ -57,17 +68,35 @@ connect.then(() => {
     console.log("Database not connected");
 });
 
-// Configure Multer
-const storage = multer.diskStorage({
+// Configure Local Storage for Multer
+const localStorage = multer.diskStorage({
   destination: function(req, file, cb) {
-    cb(null, 'uploads/');
+    const uploadPath = 'uploads/';
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
   },
   filename: function(req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
   }
 });
 
-const upload = multer({ storage: storage });
+// Initialize multer with local storage
+const upload = multer({ storage: localStorage });
+
+// Function to upload file to Cloudinary
+const uploadToCloudinary = (filePath) => {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload(filePath, { folder: 'talents' }, (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+};
 
 
 // Admin Login API 
@@ -129,13 +158,17 @@ app.post('/admin/talents', upload.single('image'), validateTalent, async (req, r
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio  } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const imageLocal = req.file ? `/uploads/${req.file.filename}` : null;
 
-  if (!image) {
+  if (!imageLocal) {
     return res.status(400).json({ message: 'Image is required' });
   }
 
   try {
+    // Upload to Cloudinary
+    const cloudinaryResult = await uploadToCloudinary(req.file.path);
+
+
     // Create a new talent
     const newTalent = new Talent({
       name,
@@ -145,7 +178,8 @@ app.post('/admin/talents', upload.single('image'), validateTalent, async (req, r
       level,
       gender,
       portfolio,
-      image,
+      image: cloudinaryResult.secure_url,
+      imageLocal,
     });
 
     // Save to the database
