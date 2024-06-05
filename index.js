@@ -223,7 +223,7 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
   }
 
   const { name, country, countryCode, skillSet, level, gender, portfolio } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : req.body.image;
+  const imageLocal = req.file ? `/uploads/${req.file.filename}` : null;
 
   try {
       // Check if talent exists
@@ -231,6 +231,13 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
       if (!talent) {
         return res.status(404).json({ message: 'Talent not found' });
       }
+
+      // Upload to Cloudinary if a new image is provided
+    let cloudinaryResult = null;
+    if (imageLocal) {
+      cloudinaryResult = await uploadToCloudinary(req.file.path);
+    }
+
       // Update talent data
       talent.name = name;
       talent.country = country;
@@ -241,8 +248,8 @@ app.patch('/admin/talents/:id', upload.single('image'), validateTalent, async (r
       talent.portfolio = portfolio;
 
       // Update image if provided
-      if (image) {
-        talent.image = image;
+      if (cloudinaryResult) {
+        talent.image = cloudinaryResult.secure_url;
       }
 
       // Save updated talent to the database
