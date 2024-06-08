@@ -30,7 +30,7 @@ const storage = multer.memoryStorage(); // Use memory storage to handle file upl
 const upload = multer({ storage });
 
 // Use modules
-const allowedOrigins = [process.env.NODE_FRONTEND_URL];
+const allowedOrigins = ['https://gritowebsite.vercel.app'];
 
 const corsOptions = {
   origin: function (origin, callback) {
