@@ -273,6 +273,21 @@ app.get('/admin/talent-request', async (req, res) => {
   }
 });
 
+// ----------------- DELETE TALENT REQUEST ------------------
+
+// Delete Talent request
+app.delete('/admin/talent-request/:id', async (req, res) => {
+  try {
+    const requestedTalents = await TalentRequest.findByIdAndDelete(req.params.id);
+    if (!requestedTalents) {
+      return res.status(404).json({ message: 'Talent request not found' });
+    }
+    res.json({ message: 'Talent Request deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ message: 'Error deleting talent request', error });
+  }
+});
+
 // ----------------- LISTEN TO PORT ------------------
 
 app.listen(process.env.PORT, () => {
